@@ -7,6 +7,8 @@
 import logging
 import xml.etree.ElementTree as ET
 
+from modules.utils import ensure_no_manual_verification
+
 logger = logging.getLogger(__name__)
 
 
@@ -182,11 +184,13 @@ class DeviceAdapter:
         uiautomator2 返回 XML string，需转换为 JSON dict（属性名映射为兼容格式）
         """
         if self.device_type == 'hmdriver2':
-            return self._device.dump_hierarchy()
+            hierarchy = self._device.dump_hierarchy()
         else:
             # uiautomator2 返回XML，缓存原始XML并转为兼容JSON
             self._last_xml = self._device.dump_hierarchy()
-            return self._xml_to_json(self._last_xml)
+            hierarchy = self._xml_to_json(self._last_xml)
+        ensure_no_manual_verification(hierarchy)
+        return hierarchy
 
     # XML属性名到hmdriver2 JSON key的映射
     _XML_ATTR_MAP = {

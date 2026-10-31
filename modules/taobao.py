@@ -124,6 +124,26 @@ def do_task(d):
     return True
 
 
+def do_time_5_task(d, timeout=15):
+    """Wait for the task page; never count an unrecognized page as success."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        # Reading through the adapter also detects verification overlays.
+        page = json.dumps(d.dump_hierarchy(), ensure_ascii=False)
+        if "累计任务奖励" not in page:
+            if "任务已完成" in page:
+                return True
+            if "浏览5秒" in page:
+                logger.info("检测到浏览5秒字样且已离开任务列表，开始计时8秒")
+                time.sleep(8)
+                d.dump_hierarchy()  # Stop if verification appeared during the wait.
+                logger.info("8秒等待完成，准备返回")
+                return True
+        time.sleep(0.5)
+    logger.warning("未检测到浏览5秒任务页面，停止本轮任务")
+    return False
+
+
 def do_time_5_search_task(d):
     if find_timeout_re(d, "搜索发现", 10):
         xpath = '//*[@content-desc="搜索发现"]/../*[normalize-space(@content-desc)!="" and @content-desc!="搜索发现"][2]'
@@ -244,30 +264,8 @@ def run(d):
 
         if find_time_5_task(d):
             logger.info("进行浏览5秒任务，等待检测到浏览5秒字样且离开任务列表")
-            # 等待检测到"浏览5秒"字样且不在任务列表
-            start_time = time.time()
-            detected = False
-            while time.time() - start_time < 15:  # 最多等待15秒
-                # 检查是否在任务列表（有累计任务奖励字样）
-                if d(text="累计任务奖励").exists():
-                    logger.debug("仍在任务列表，继续等待")
-                    time.sleep(0.5)
-                    continue
-                # 检查页面是否出现"浏览5秒"字样
-                if d.xpath_exists(
-                    '//*[contains(@text, "浏览5秒") or contains(@text, "任务已完成")]'
-                ):
-                    logger.info("检测到浏览5秒字样且已离开任务列表，开始计时8秒")
-                    detected = True
-                    break
-                time.sleep(0.5)
-
-            if detected:
-                time.sleep(8)
-                logger.info("8秒等待完成，准备返回")
-            else:
-                logger.warning("未检测到浏览5秒字样，超时返回")
-
+            if not do_time_5_task(d):
+                raise RuntimeError("浏览5秒任务未确认进入，已停止本轮任务，未计入完成数")
             done_count += 1
 
             if not return_task_list(d):

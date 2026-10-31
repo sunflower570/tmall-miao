@@ -7,6 +7,8 @@ import time
 import threading
 import urllib.request
 
+from modules.utils import ManualVerificationRequired
+
 # 打包后将内置的 tools 目录加入 PATH，使 hdc/adb 可被找到
 if getattr(sys, "frozen", False):
     _tools_dir = os.path.join(sys._MEIPASS, "tools")
@@ -429,6 +431,9 @@ def main():
         except KeyboardInterrupt:
             print(f"\n{Colors.WARNING}⚠️ 操作已取消。{Colors.ENDC}")
             time.sleep(0.5)
+        except ManualVerificationRequired as e:
+            print(f"{Colors.WARNING}⚠️ {e}。本轮任务已停止，未继续自动重试。{Colors.ENDC}")
+            print("完成验证后，请回到活动页面并重新选择任务。")
         except RuntimeError as e:
             print(f"{Colors.FAIL}❌ 任务异常: {str(e)}{Colors.ENDC}")
             time.sleep(1)

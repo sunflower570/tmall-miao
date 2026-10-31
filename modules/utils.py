@@ -6,6 +6,17 @@ import re
 import time
 
 
+class ManualVerificationRequired(RuntimeError):
+    """The current page requires the user to complete verification."""
+
+
+def ensure_no_manual_verification(hierarchy):
+    text = json.dumps(hierarchy, ensure_ascii=False)
+    markers = ("验证码拦截", "向右滑动验证", "请拖动下方滑块完成验证")
+    if any(marker in text for marker in markers):
+        raise ManualVerificationRequired("检测到滑块验证，请在手机上手动完成验证")
+
+
 # 生成拟人波动轨迹点（公共逻辑）
 def _generate_swipe_points(x1, y1, x2, y2, wave_range=30):
     dx = x2 - x1
